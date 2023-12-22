@@ -7,9 +7,8 @@ const mongoose = require("mongoose");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const googleClientId =
-  "864056163165-6ejprdnkuh19mcuifoojmc42nqv5mtp4.apps.googleusercontent.com";
-const googleClientSecret = "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";
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_SECRET;
 const jwtSecret = "yash";
 const oauth2Client = new google.auth.OAuth2(
   googleClientId,
