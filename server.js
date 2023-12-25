@@ -4,16 +4,20 @@ const { google } = require("googleapis");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const mongoose = require("mongoose");
+require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
+
 const googleClientSecret = process.env.GOOGLE_SECRET;
+
 const jwtSecret = "yash";
 const oauth2Client = new google.auth.OAuth2(
   googleClientId,
   googleClientSecret,
   "https://jsmainsitebackend.onrender.com/api/auth/google/callback"
+  // "http://localhost:3001/api/auth/google/callback"  
 );
 
 // Connect to the first MongoDB database
@@ -124,6 +128,7 @@ app.get("/api/auth/google/callback", async (req, res) => {
     }
 
     res.redirect(`https://mainsite-lyart.vercel.app/?jwt=${sessionToken}`);
+    // res.redirect(`http://localhost:3000/?jwt=${sessionToken}`);
   } catch (error) {
     console.error("Error fetching user information:", error.message);
     res.status(500).send("Error fetching user information");
@@ -177,6 +182,39 @@ app.get("/mainsdata", verifyJWT, async (req, res) => {
 
   res.json(matchingUsers.arrayField);
 });
+
+
+
+app.post("/advdata", verifyJWT, async (req, res) => {
+  try {
+    const data = req.body;
+    const { email } = req.user.user;
+    console.log(data);
+    const TestEntry = await mainDb.models["TestEntry"].findOne({
+      email: email,
+    });
+    const date = new Date();
+
+    const newdata = {
+      date: date,
+      type: "adv",
+      totalMarks: 300,
+      marksScored: data.correct,
+      sillyError: data.silly,
+      revision: data.slight,
+      toughness: data.tough,
+      theory: data.theory,
+    };
+    TestEntry.arrayField.push(newdata);
+    await TestEntry.save();
+    res.status(200).json({ message: "User data saved successfully" });
+  } catch (error) {
+    console.error("Error saving user data:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
 
 app.get("/api/protected-data", verifyJWT, (req, res) => {
   // Access user information from req.user
