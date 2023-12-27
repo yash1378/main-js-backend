@@ -16,8 +16,8 @@ const jwtSecret = "yash";
 const oauth2Client = new google.auth.OAuth2(
   googleClientId,
   googleClientSecret,
-  // "https://jsmainsitebackend.onrender.com/api/auth/google/callback"
-  "http://localhost:3001/api/auth/google/callback"  
+  "https://jsmainsitebackend.onrender.com/api/auth/google/callback"
+  // "http://localhost:3001/api/auth/google/callback"  
 );
 
 // Connect to the first MongoDB database
