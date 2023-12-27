@@ -16,8 +16,8 @@ const jwtSecret = "yash";
 const oauth2Client = new google.auth.OAuth2(
   googleClientId,
   googleClientSecret,
-  "https://jsmainsitebackend.onrender.com/api/auth/google/callback"
-  // "http://localhost:3001/api/auth/google/callback"  
+  // "https://jsmainsitebackend.onrender.com/api/auth/google/callback"
+  "http://localhost:3001/api/auth/google/callback"  
 );
 
 // Connect to the first MongoDB database
@@ -78,6 +78,8 @@ if (!mongoose.models["TestEntry"]) {
   const testEntrySchema = new mongoose.Schema({
     email: { type: String, unique: true, default: "" },
     Name: { type: String, default: "" },
+    Coaching: { type: String, default: "" },
+    Class: { type: String, default: "" },
     arrayField: [arrayElementSchema], // array of elements with the specified schema
   });
   mainDb.model("TestEntry", testEntrySchema);
@@ -121,14 +123,16 @@ app.get("/api/auth/google/callback", async (req, res) => {
       const TestEntry = mainDb.model("TestEntry");
       const newEntry = new TestEntry({
         email: data.email,
-        Name: data.name,
+        Name: "",
+        Coaching:"",
+        Class:"",
         arrayField: [],
       });
       await newEntry.save();
     }
 
-    res.redirect(`https://mainsite-lyart.vercel.app/?jwt=${sessionToken}`);
-    // res.redirect(`http://localhost:3000/?jwt=${sessionToken}`);
+    res.redirect(`https://mainsite-lyart.vercel.app/?jwt=${sessionToken}&new=${!present}`);
+    // res.redirect(`http://localhost:3000/?jwt=${sessionToken}&new=${!present}`);
   } catch (error) {
     console.error("Error fetching user information:", error.message);
     res.status(500).send("Error fetching user information");
@@ -165,6 +169,28 @@ app.post("/mainsdata", verifyJWT, async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+//  API for setting name coaching and class of new user
+
+app.post("/api/submit", verifyJWT, async (req, res) => {
+  try {
+    const data = req.body;
+    const { email } = req.user.user;
+    console.log(data);
+    const TestEntry = await mainDb.models["TestEntry"].findOne({
+      email: email,
+    });
+    TestEntry.Name = data.name;
+    TestEntry.Coaching = data.dropdown2Value;
+    TestEntry.Class = data.dropdown1Value;
+    await TestEntry.save();
+    res.status(200).json({ message: "User data saved successfully" });
+  } catch (error) {
+    console.error("Error saving user data:", error);
+    res.status(500).json({ message: "Internal Server Error" });  
+  }
+})
+
 
 // Endpoint to get users by email
 app.get("/mainsdata", verifyJWT, async (req, res) => {
