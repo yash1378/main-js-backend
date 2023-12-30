@@ -3,6 +3,7 @@ const express = require("express");
 const { google } = require("googleapis");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
+const axios = require("axios");
 const mongoose = require("mongoose");
 require("dotenv").config();
 
@@ -16,8 +17,8 @@ const jwtSecret = "yash";
 const oauth2Client = new google.auth.OAuth2(
   googleClientId,
   googleClientSecret,
-  "https://jsmainsitebackend.onrender.com/api/auth/google/callback"
-  // "http://localhost:3001/api/auth/google/callback"  
+  // "https://jsmainsitebackend.onrender.com/api/auth/google/callback"
+  "http://localhost:3001/api/auth/google/callback"  
 );
 
 // Connect to the first MongoDB database
@@ -33,6 +34,20 @@ mainDb.on(
   console.error.bind(console, "Main MongoDB connection error:")
 );
 mainDb.once("open", () => console.log("Connected to Main MongoDB"));
+
+// Connect to the first MongoDB database
+const mainMongo =
+  "mongodb+srv://yashd:devweb1234@nodeexpressproject.qp0arwg.mongodb.net/trial?retryWrites=true&w=majority";
+const main = mongoose.createConnection(mainMongo, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+main.on(
+  "error",
+  console.error.bind(console, "Main MongoDB connection error:")
+);
+main.once("open", () => console.log("Connected to Main MongoDB"));
 
 // Enable CORS for all routes
 app.use(cors());
@@ -84,6 +99,14 @@ if (!mongoose.models["TestEntry"]) {
   });
   mainDb.model("TestEntry", testEntrySchema);
 }
+if (!mongoose.models["Trial"]) {
+  // Define the schema for the test entry
+  const trialSchema = new mongoose.Schema({
+    key: { type: String, unique: true, default: "" },
+    value: { type: String, default: "" },
+  });
+  main.model("Trial", trialSchema);
+}
 
 
 
@@ -131,8 +154,8 @@ app.get("/api/auth/google/callback", async (req, res) => {
       await newEntry.save();
     }
 
-    res.redirect(`https://mainsite-lyart.vercel.app/?jwt=${sessionToken}&new=${!present}`);
-    // res.redirect(`http://localhost:3000/?jwt=${sessionToken}&new=${!present}`);
+    // res.redirect(`https://mainsite-lyart.vercel.app/?jwt=${sessionToken}&new=${!present}`);
+    res.redirect(`http://localhost:3000/?jwt=${sessionToken}&new=${!present}`);
   } catch (error) {
     console.error("Error fetching user information:", error.message);
     res.status(500).send("Error fetching user information");
@@ -241,8 +264,44 @@ app.post("/advdata", verifyJWT, async (req, res) => {
 });
 
 
+// Define an API endpoint to fetch and save data
 
-app.get("/api/protected-data", verifyJWT, (req, res) => {
+// ...
+
+app.get("/fetch", async (req, res) => {
+  try {
+    const Trial = main.model("Trial");
+
+    // Check if the document with the key exists
+    const existingDocument = await Trial.findOne({ key: "fakeApiData" });
+
+    if (existingDocument) {
+
+      console.log("Document updated:", existingDocument);
+      res.json({ success: true, existingDocument });
+    } else {
+      // Create a new document if it doesn't exist
+      const { data } = await axios.get("https://jsonplaceholder.typicode.com/todos/4");
+      const newEntry = new Trial({
+        key: "fakeApiData",
+        value: JSON.stringify(data),
+      });
+      await newEntry.save();
+      console.log("New document created:", newEntry);
+      res.json({ success: true, data });
+    }
+  } catch (error) {
+    console.error("Error fetching and saving data:", error);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+});
+
+// ...
+
+
+
+
+app.get("/api/protected-data", verifyJWT, (req, res) =>{
   // Access user information from req.user
   const { name, email } = req.user.user;
   // console.log(req.user.user);
