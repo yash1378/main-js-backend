@@ -94,7 +94,7 @@ app.get("/api/auth/google/callback", async (req, res) => {
       await client.set(data.email, JSON.stringify(userData));
     }
 
-      res.redirect(`https://mainsite-lyart.vercel.app/?jwt=${sessionToken}`);
+      res.redirect(`https://mainsite-lyart.vercel.app/?jwt=${sessionToken}&new=${pre}`);
     // res.redirect(`http://localhost:3000/?jwt=${sessionToken}&new=${pre}`);
   } catch (error) {
     console.error("Error fetching user information:", error.message);
