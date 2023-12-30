@@ -250,7 +250,7 @@ app.post("/api/submit", verifyJWT, async (req, res) => {
 
 
 
-// Define an API endpoint to fetch and save data
+// // Define an API endpoint to fetch and save data
 // app.get("/fetch", async (req, res) => {
 //   try {
 //     // Fetch data from a fake API (JSONPlaceholder)
