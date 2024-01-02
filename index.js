@@ -30,7 +30,7 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_SECRET;
 // Twilio credentials (replace with your own)
 const accountSid = 'ACf8512989cb8b1e5a31ebe7d7167aa01c';
-const authToken = '603cf9e8196978bb142a8913f63d158f';
+const authToken = 'd71b5e9a78b71f5274b3b723431f1e08';
 const clienttwilio = new twilio(accountSid, authToken);
 const jwtSecret = "yash";
 const oauth2Client = new google.auth.OAuth2(
@@ -136,7 +136,7 @@ app.post('/sendOTP', (req, res) => {
       })
       .catch(error => {
           console.log("here")
-          console.error(error.message);
+          console.error(error);
           res.status(500).send('Error sending OTP');
       });
 });
