@@ -127,7 +127,7 @@ app.post('/sendOTP', (req, res) => {
   clienttwilio.messages
       .create({
           body: `Hello ${name}, your OTP is: ${otp}`,
-          from: '+12059473131',
+          from: process.env.TWILIO_PHONE,
           to: `+91${phone}` // Assuming Indian phone numbers, adjust as needed
       })
       .then(message => {
