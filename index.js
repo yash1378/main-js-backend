@@ -29,8 +29,8 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID;
 
 const googleClientSecret = process.env.GOOGLE_SECRET;
 // Twilio credentials (replace with your own)
-const accountSid = 'AC07b0f1ba572d368d2bd65ae3a97c3e78';
-const authToken = '3b8cb6a7d3b2f26293af314337991518';
+const accountSid = 'ACf8512989cb8b1e5a31ebe7d7167aa01c';
+const authToken = '603cf9e8196978bb142a8913f63d158f';
 const clienttwilio = new twilio(accountSid, authToken);
 const jwtSecret = "yash";
 const oauth2Client = new google.auth.OAuth2(
@@ -127,7 +127,7 @@ app.post('/sendOTP', (req, res) => {
   clienttwilio.messages
       .create({
           body: `Hello ${name}, your OTP is: ${otp}`,
-          from: '+19493475457',
+          from: '+12059473131',
           to: `+91${phone}` // Assuming Indian phone numbers, adjust as needed
       })
       .then(message => {
@@ -135,6 +135,7 @@ app.post('/sendOTP', (req, res) => {
           res.send({"otpId":otpId});
       })
       .catch(error => {
+          console.log("here")
           console.error(error.message);
           res.status(500).send('Error sending OTP');
       });
