@@ -29,8 +29,8 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID;
 
 const googleClientSecret = process.env.GOOGLE_SECRET;
 // Twilio credentials (replace with your own)
-const accountSid = 'ACf8512989cb8b1e5a31ebe7d7167aa01c';
-const authToken = 'd71b5e9a78b71f5274b3b723431f1e08';
+const accountSid = process.env.TWILIO_ID;
+const authToken = process.env.TWILIO_TOKEN;
 const clienttwilio = new twilio(accountSid, authToken);
 const jwtSecret = "yash";
 const oauth2Client = new google.auth.OAuth2(
