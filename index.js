@@ -1,13 +1,20 @@
 const express = require("express");
 const { google } = require("googleapis");
 const jwt = require("jsonwebtoken");
+const bodyParser = require('body-parser');
+const twilio = require('twilio');
+
 const cors = require("cors");
 const axios = require("axios");
 const { createClient } = require("redis");
 require("dotenv").config();
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const port = 3001;
+// In-memory storage for phone numbers and OTPs (for demo purposes)
+const otpStorage = {};
+
 
 // Connect to Redis server on localhost:8001
 const client = createClient({
@@ -21,7 +28,10 @@ client.on("error", (err) => console.log("Redis Client Error", err));
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 
 const googleClientSecret = process.env.GOOGLE_SECRET;
-
+// Twilio credentials (replace with your own)
+const accountSid = 'AC07b0f1ba572d368d2bd65ae3a97c3e78';
+const authToken = '3b8cb6a7d3b2f26293af314337991518';
+const clienttwilio = new twilio(accountSid, authToken);
 const jwtSecret = "yash";
 const oauth2Client = new google.auth.OAuth2(
   googleClientId,
@@ -30,9 +40,11 @@ const oauth2Client = new google.auth.OAuth2(
   // "http://localhost:3001/api/auth/google/callback"
 );
 
-app.use(cors());
+
+app.use(cors('*'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ extended: false }));
 
 // Middleware to verify JWT
 const verifyJWT = (req, res, next) => {
@@ -101,11 +113,95 @@ app.get("/api/auth/google/callback", async (req, res) => {
     res.status(500).send("Error fetching user information");
   }
 });
+
+app.post('/sendOTP', (req, res) => {
+  const { name, phone } = req.body;
+
+  // Generate a random 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  // Save the OTP in storage
+  const otpId = uuidv4();
+  otpStorage[otpId] = { phone, otp };
+
+  // Send OTP via Twilio
+  clienttwilio.messages
+      .create({
+          body: `Hello ${name}, your OTP is: ${otp}`,
+          from: '+19493475457',
+          to: `+91${phone}` // Assuming Indian phone numbers, adjust as needed
+      })
+      .then(message => {
+          console.log(`OTP sent: ${message.sid}`);
+          res.send({"otpId":otpId});
+      })
+      .catch(error => {
+          console.error(error.message);
+          res.status(500).send('Error sending OTP');
+      });
+});
+
+// ... (previous code)
+
+app.post('/api/verifyOTP/:otpId', async (req, res) => {
+  const otpId = req.params.otpId;
+  const enteredOtp = req.body.enteredOtp;
+
+  // Check if the OTP ID exists in storage
+  if (otpStorage[otpId]) {
+    const storedOtp = otpStorage[otpId].otp;
+
+    // Check if the entered OTP matches the stored OTP
+    if (enteredOtp === storedOtp.toString()) {
+      // OTP verification successful
+      const phone = otpStorage[otpId].phone;
+      const present = await client.get(String(phone));
+      var pre = false;
+
+      if (present === null) {
+        // If the email is not present in Redis, create a new record
+        const userData = {
+          Name: "",
+          Coaching: "",
+          Class: "",
+          testScores: [], // Initially, no test scores
+        };
+        pre = true;
+
+        await client.set(String(phone), JSON.stringify(userData));
+      }
+
+      // Generate JWT token
+      const jwtToken = jwt.sign({ phone }, jwtSecret, { expiresIn: '1h' });
+
+      // Remove the used OTP ID from storage
+      delete otpStorage[otpId];
+
+      res.status(200).json({ message: pre, jwtToken });
+    } else {
+      res.status(400).json({ message: 'Incorrect OTP. Please try again.' });
+    }
+  } else {
+    res.status(404).json({ message: 'Invalid OTP ID' });
+  }
+});
+
+// ... (rest of the code)
+
+
+
 app.post("/mainsdata", verifyJWT, async (req, res) => {
   try {
     const data = req.body;
-    const { email } = req.user.user;
-
+    const {phone} = req.user;
+    console.log(req.user)
+    let email;
+    if(!phone){
+      email = req.user.user.email;
+    }
+    else{
+      email = phone;
+    }
+    console.log(email)
     // Retrieve user data from Redis
     const userDataStr = await client.get(email);
 
@@ -118,28 +214,27 @@ app.post("/mainsdata", verifyJWT, async (req, res) => {
         date: data.date,
         type: "mains",
         totalMarks: 300,
-        maths:{
+        maths: {
           marksScored: data.correctm,
           sillyError: data.sillym,
           revision: data.slightm,
           toughness: data.toughm,
           theory: data.theorym,
         },
-        physics:{
+        physics: {
           marksScored: data.correctp,
           sillyError: data.sillyp,
           revision: data.slightp,
           toughness: data.toughp,
           theory: data.theoryp,
         },
-        chemistry:{
+        chemistry: {
           marksScored: data.correctc,
           sillyError: data.sillyc,
           revision: data.slightc,
           toughness: data.toughc,
           theory: data.theoryc,
         },
-
       };
 
       // Push the new data into the testScores array
@@ -158,11 +253,18 @@ app.post("/mainsdata", verifyJWT, async (req, res) => {
   }
 });
 
+
 app.post("/advdata", verifyJWT, async (req, res) => {
   try {
     const data = req.body;
-    const { email } = req.user.user;
-
+    const {phone} = req.user;
+    let email;
+    if(!phone){
+      email = req.user.user.email;
+    }
+    else{
+      email = phone;
+    }
     // Retrieve user data from Redis
     const userDataStr = await client.get(email);
 
@@ -201,8 +303,15 @@ app.post("/advdata", verifyJWT, async (req, res) => {
 
 app.get("/mainsdata", verifyJWT, async (req, res) => {
   try {
-    const userEmail = req.user.user.email;
 
+    const {phone} = req.user;
+    let userEmail;
+    if(!phone){
+      userEmail = req.user.user.email;
+    }
+    else{
+      userEmail = phone;
+    }
     // Retrieve user data from Redis
     const userDataStr = await client.get(userEmail);
 
@@ -221,8 +330,15 @@ app.get("/mainsdata", verifyJWT, async (req, res) => {
 app.post("/api/submit", verifyJWT, async (req, res) => {
   try {
     const data = req.body;
-    const { email } = req.user.user;
-
+    // const { user } = req.user;
+    const {phone} = req.user;
+    let email;
+    if(!phone){
+      email = req.user.user.email;
+    }
+    else{
+      email = phone;
+    }
     // Retrieve user data from Redis
     const userDataStr = await client.get(email);
 
